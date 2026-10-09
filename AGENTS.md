@@ -2,8 +2,8 @@
 
 This project is expected to run locally using split systemd user services:
 
-- `pi-web-sessiond.service` runs `npm run start:sessiond` in non-autoreload, non-auto-restart mode.
-- `pi-web-ui-dev.service` runs the web/API and Vite UI in dev autoreload mode with `npm run dev:web` and `npm run dev:client`.
+- `pi-web-sessiond.service` runs `pnpm start:sessiond` in non-autoreload, non-auto-restart mode.
+- `pi-web-ui-dev.service` runs the web/API and Vite UI in dev autoreload mode with `pnpm dev:web` and `pnpm dev:client`.
 
 When working on this project, assume the session runtime owner is long-lived and separate from the autoreloading UI/API process. Browser disconnects and UI/API restarts should not stop active Pi sessions.
 
@@ -25,7 +25,7 @@ Project-specific testing rules live in `.agents/skills/testing-guide/SKILL.md`.
 
 Use that skill whenever writing, modifying, reviewing, or planning tests, closing coverage gaps, triaging test failures, or creating test helpers/harnesses. Keep detailed testing conventions there rather than growing this top-level orientation file.
 
-Default to focused tests while iterating, then scoped ESLint and `npm run typecheck:cached` for a completed TypeScript code change. Run completion checks once against the final changes; rerun affected checks if relevant files change afterward, not merely because you are committing. Pre-commit only runs `git diff --cached --check`; agents own scoped local verification, and CI owns the full gate. Escalate according to [development and delivery checks](docs/development-checks.md). Ordinary app changes do not require package-install smoke tests locally.
+Default to focused tests while iterating, then scoped ESLint and `pnpm typecheck:cached` for a completed TypeScript code change. Run completion checks once against the final changes; rerun affected checks if relevant files change afterward, not merely because you are committing. Pre-commit only runs `git diff --cached --check`; agents own scoped local verification, and CI owns the full gate. Escalate according to [development and delivery checks](docs/development-checks.md). Ordinary app changes do not require package-install smoke tests locally.
 
 ## Verification reporting
 
