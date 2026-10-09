@@ -8,12 +8,13 @@ export class CheckpointCard extends LitElement {
   /** Already in display order. */
   @property({ attribute: false }) options: CheckpointOption[] = [];
   @property() selectedId: string | undefined;
+  @property({ type: Boolean }) skipped = false;
   @property({ attribute: false }) onPick: ((optionId: string) => void | Promise<void>) | undefined;
   @state() private submittedId: string | undefined;
 
   override render() {
     const chosen = this.selectedId ?? this.submittedId;
-    const answerable = chosen === undefined && this.onPick !== undefined;
+    const answerable = chosen === undefined && !this.skipped && this.onPick !== undefined;
     return html`
       <section class="card" aria-label="Choose how to proceed">
         <p class="question" dir="auto">${this.question}</p>
