@@ -6,12 +6,14 @@ OpenAI-compatible chat completions over SSE. Emits Laith's `offer_options` tool 
 """
 
 import json
+import os
 import random
 import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-CHARS_PER_SEC = 600
+CHARS_PER_SEC = int(os.environ.get("STUB_CHARS_PER_SEC", 600))
+PORT = int(os.environ.get("STUB_PORT", 4011))
 
 WORDS = """the agent email form handler test branch validation signup input regex domain retry cache
 schema migration user session token config error edge case fixture diff patch commit build log
@@ -82,7 +84,11 @@ class Handler(BaseHTTPRequestHandler):
             delta({"content": text[i : i + 8]})
             time.sleep(8 / CHARS_PER_SEC)
         for i, fn in enumerate(calls):
-            delta({"tool_calls": [{"index": i, "id": f"call_{uuid.uuid4().hex[:24]}", "type": "function", "function": fn}]})
+            delta({"tool_calls": [{"index": i, "id": f"call_{uuid.uuid4().hex[:24]}", "type": "function", "function": {"name": fn["name"], "arguments": ""}}]})
+            args = fn["arguments"]
+            for j in range(0, len(args), 16):
+                delta({"tool_calls": [{"index": i, "function": {"arguments": args[j : j + 16]}}]})
+                time.sleep(16 / CHARS_PER_SEC)
         delta({}, "tool_calls" if calls else "stop")
         self.chunk("[DONE]")
         self.wfile.write(b"0\r\n\r\n")
@@ -90,4 +96,4 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    ThreadingHTTPServer(("127.0.0.1", 4011), Handler).serve_forever()
+    ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
