@@ -9,6 +9,7 @@ IH_REF=${IH_REF:-origin/feat/session-recording-harness}
 STATE=${STATE:-$(mktemp -d /tmp/claude/ih-dev.XXXXXX)}
 HOST=${HOST:-127.0.0.1}
 PORT=${PORT:-7710}
+STUB_PORT=${STUB_PORT:-4011}
 API=http://$HOST:$PORT/api
 
 mkdir -p "$STATE"/{agent/extensions,data,config,workspace}
@@ -20,7 +21,7 @@ mv "$STATE/pi-extension-checkpoint" "$STATE/agent/extensions/checkpoint"
 patch -s -d "$STATE/agent/extensions/checkpoint" -p1 < "$HERE/pick-by-id.patch"
 
 cat > "$STATE/agent/models.json" <<EOF
-{"providers": {"study": {"baseUrl": "http://127.0.0.1:4011/v1", "api": "openai-completions", "apiKey": "none",
+{"providers": {"study": {"baseUrl": "http://127.0.0.1:$STUB_PORT/v1", "api": "openai-completions", "apiKey": "none",
   "models": [{"id": "stub", "name": "Agent", "contextWindow": 200000, "maxTokens": 8192}]}}}
 EOF
 cat > "$STATE/agent/settings.json" <<EOF
@@ -34,7 +35,7 @@ export PI_CODING_AGENT_DIR=$STATE/agent PI_WEB_DATA_DIR=$STATE/data PI_WEB_CONFI
   PI_WEB_HOST=$HOST PI_WEB_PORT=$PORT PI_WEB_SESSIOND_SOCKET=$STATE/sessiond.sock PI_WEB_SKIP_VERSION_CHECK=1 PI_WEB_OFFLINE=1
 
 trap 'kill 0' EXIT
-python3 -u "$HERE/stub-backend.py" > "$STATE/stub.log" 2>&1 &
+STUB_PORT=$STUB_PORT python3 -u "$HERE/stub-backend.py" > "$STATE/stub.log" 2>&1 &
 node "$ROOT/dist/server/sessiond.js" > "$STATE/sessiond.log" 2>&1 &
 node "$ROOT/dist/server/index.js" > "$STATE/web.log" 2>&1 &
 until curl -fsS "$API/sessiond/health" > /dev/null 2>&1; do sleep 0.5; done
