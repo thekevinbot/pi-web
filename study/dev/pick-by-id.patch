@@ -1,0 +1,31 @@
+--- a/src/command.ts
++++ b/src/command.ts
+@@ -4,7 +4,7 @@
+ export function registerPickCommand(pi: ExtensionAPI): void {
+     pi.registerCommand("pick", {
+         description: "Take one of the options at this checkpoint",
+-        handler: async (_args, ctx) => {
++        handler: async (args, ctx) => {
+             const checkpoint = checkpointOn(ctx.sessionManager.getBranch());
+             if (!checkpoint?.options.length) {
+                 ctx.ui.notify(
+@@ -14,11 +14,14 @@
+                 return;
+             }
+ 
+-            const optionLabels = checkpoint.options.map((option) => option.label);
+-            const answer = await ctx.ui.select(checkpoint.question, optionLabels);
+-            if (answer === undefined) return;
+-
+-            const selected = checkpoint.options[optionLabels.indexOf(answer)];
++            const requestedId = args.trim();
++            let selected = checkpoint.options.find((option) => option.id === requestedId);
++            if (!selected) {
++                const optionLabels = checkpoint.options.map((option) => option.label);
++                const answer = await ctx.ui.select(checkpoint.question, optionLabels);
++                if (answer === undefined) return;
++                selected = checkpoint.options[optionLabels.indexOf(answer)];
++            }
+             if (!selected) return;
+ 
+             pi.sendMessage(
