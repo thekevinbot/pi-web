@@ -2,6 +2,7 @@ import { ASK_USER_ANSWERS_CUSTOM_TYPE } from "../../shared/apiTypes";
 import { parseAskUserOutcome } from "./api/parsers";
 import { isSessionMediaId } from "../../shared/sessionMedia";
 import type { ChatLine, ChatPart, ToolExecutionPart, ToolPreview } from "./components/shared";
+import { checkpointPart, OFFER_OPTIONS_TOOL, OPTION_SELECTION_CUSTOM_TYPE, optionSelectionPart } from "./study/checkpoints";
 
 export function normalizeMessages(messages: unknown[]): ChatLine[] {
   return coalesceToolExecutions(messages.flatMap(normalizeMessage)).filter((message) => message.parts.length > 0);
@@ -172,6 +173,10 @@ function normalizeRole(role: unknown): ChatLine["role"] {
 function normalizeContent(content: unknown, message: unknown): ChatPart[] {
   const askUserRecord = askUserRecordPart(message);
   if (askUserRecord !== undefined) return [askUserRecord];
+  if (getString(message, "role") === "custom" && getString(message, "customType") === OPTION_SELECTION_CUSTOM_TYPE) {
+    const selection = optionSelectionPart(getProperty(message, "details"));
+    if (selection !== undefined) return [selection];
+  }
   if (typeof content === "string") {
     const displayText = getString(message, "displayText");
     return content !== "" ? [{ type: "text", text: content, ...(displayText === undefined ? {} : { displayText }) }] : [];
@@ -194,6 +199,8 @@ function normalizeContent(content: unknown, message: unknown): ChatPart[] {
       const toolCallId = getString(part, "id");
       const skillRead = toolName === "read" ? parseSkillReadPath(getString(args, "path")) : undefined;
       if (skillRead !== undefined) return [{ type: "skillRead", ...skillRead, ...(toolCallId === undefined ? {} : { toolCallId }) }];
+      const checkpoint = toolName === OFFER_OPTIONS_TOOL ? checkpointPart(toolCallId, args) : undefined;
+      if (checkpoint !== undefined) return [checkpoint];
       return [{ type: "toolCall", ...(toolCallId === undefined ? {} : { toolCallId }), toolName, summary: summarizeArgs(args), ...(args === undefined ? {} : { args }) }];
     }
     if (type === "image") return normalizeImage(part);
