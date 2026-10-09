@@ -55,6 +55,11 @@ export interface ToolExecutionPart {
   preview?: ToolPreview;
 }
 
+export interface CheckpointOption {
+  id: string;
+  label: string;
+}
+
 /** A reference never carries base64; inline images remain compatible with older machines. */
 export type ChatImagePart =
   | { type: "image"; mimeType: string; data: string; mediaId?: never; byteSize?: never }
@@ -67,6 +72,8 @@ export type ChatPart =
   | { type: "skillInvocation"; name: string; location: string; content: string }
   | { type: "skillRead"; name: string; path: string; toolCallId?: string }
   | { type: "askUserRecord"; outcome: AskUserOutcome }
+  | { type: "checkpoint"; toolCallId?: string; question: string; options: CheckpointOption[]; selectedId?: string }
+  | { type: "optionSelection"; id: string }
   | { type: "toolCall"; toolCallId?: string; toolName: string; summary: string; args?: unknown }
   | ToolExecutionPart
   | { type: "toolResult"; toolCallId?: string; toolName: string; text: string; isError: boolean; content?: unknown; details?: unknown }

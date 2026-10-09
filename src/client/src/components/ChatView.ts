@@ -31,6 +31,8 @@ import {
 import type { ChatLine, ChatPart } from "./shared";
 import { chatStyles, renderSessionWarningIcon } from "./shared";
 import "./AskUserCard";
+import "../study/CheckpointCard";
+import { applyCheckpoints, displayOrder } from "../study/checkpoints";
 import "./ExtensionDialogCard";
 import type { ExtensionDialogAnswerCallback, ExtensionDialogCancelCallback, ExtensionDialogDismissCallback } from "./ExtensionDialogCard";
 import { registerRenderedModal, type RenderedModalRegistration } from "./modalLayerRegistry";
@@ -222,6 +224,7 @@ export class ChatView extends LitElement {
   @property({ attribute: false }) activity?: SessionActivity;
   @property({ attribute: false }) pendingAsk?: PendingAskUser;
   @property({ attribute: false }) askDraftSessionId = "";
+  @property({ attribute: false }) onPickOption?: (optionId: string) => void | Promise<void>;
   @property({ attribute: false }) onSubmitAsk?: (askId: string, submission: AskUserSubmission) => void | Promise<void>;
   @property({ attribute: false }) pendingDialogs: PendingExtensionDialog[] = [];
   @property({ attribute: false }) closedDialogs: ClosedExtensionDialog[] = [];
@@ -694,7 +697,7 @@ export class ChatView extends LitElement {
     if (this.groupedMessagesInput === this.messages && this.groupedMessagesStart === this.messageStart) return this.groupedMessagesCache;
     this.groupedMessagesInput = this.messages;
     this.groupedMessagesStart = this.messageStart;
-    this.groupedMessagesCache = groupChatMessages(this.messages, this.messageStart);
+    this.groupedMessagesCache = groupChatMessages(applyCheckpoints(this.messages), this.messageStart);
     return this.groupedMessagesCache;
   }
 
@@ -1064,6 +1067,16 @@ export class ChatView extends LitElement {
         <strong>Loaded ${part.name}</strong>
         <small>read ${part.path}</small>
       </div>
+    `;
+    if (part.type === "checkpoint") return html`
+      <checkpoint-card
+        class="part"
+        data-scroll-anchor-id=${`checkpoint:${part.toolCallId ?? intentKey}`}
+        .question=${part.question}
+        .options=${displayOrder(part.options, `${this.sessionId}:${part.toolCallId ?? part.question}`)}
+        .selectedId=${part.selectedId}
+        .onPick=${this.onPickOption}
+      ></checkpoint-card>
     `;
     if (part.type === "askUserRecord") return html`
       <ask-user-card
