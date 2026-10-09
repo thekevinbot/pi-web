@@ -56,6 +56,8 @@ export function activateTerminalPlugin(
         title: "Terminal",
         icon,
         order: 30,
+        // Study build: participants get no shell.
+        visible: () => false,
         badge: (workspaceContext: WorkspacePanelContext) => runtime.activeTerminalBadge(workspaceContext),
         onInvalidate: (workspaceContext: WorkspacePanelContext) => runtime.invalidate(workspaceContext),
         render: (workspaceContext: WorkspacePanelContext) => context.html`${staticHtml`<${panelTag} .context=${workspaceContext} .runtime=${runtime} .softKeysElementName=${softKeysElement}></${panelTag}>`}`,

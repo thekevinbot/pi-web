@@ -27,8 +27,12 @@ EOF
 cat > "$STATE/agent/settings.json" <<EOF
 {"defaultProvider": "study", "defaultModel": "stub", "defaultThinkingLevel": "off", "compaction": {"enabled": false}}
 EOF
+cat > "$STATE/data/pi-package-dismissals.json" <<EOF
+{"dismissals": [{"profileDir": "$STATE/agent", "packageId": "@jmfederico/pi-relay", "dismissedAt": "2026-10-09T00:00:00.000Z"}]}
+EOF
 cat > "$STATE/config/config.json" <<EOF
-{"spawnSessions": false, "askUser": false, "extensionDialogsTimeoutMs": 0}
+{"spawnSessions": false, "askUser": false, "extensionDialogsTimeoutMs": 0,
+  "plugins": {"git": {"enabled": false}, "info": {"enabled": false}, "updates": {"enabled": false}, "workspace-tasks": {"enabled": false}}}
 EOF
 
 export PI_CODING_AGENT_DIR=$STATE/agent PI_WEB_DATA_DIR=$STATE/data PI_WEB_CONFIG=$STATE/config/config.json \

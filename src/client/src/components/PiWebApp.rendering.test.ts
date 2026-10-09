@@ -21,9 +21,7 @@ import { WorkspacePanel } from "./WorkspacePanel";
 import { WorkspaceList } from "./WorkspaceList";
 import { ProjectList } from "./ProjectList";
 import { SessionList } from "./SessionList";
-import { saveNavigationPreferences } from "../navigationPreferences";
 import { deepActiveElement } from "./modalLayerRegistry";
-import { AppShellController } from "../appShell/appShellController";
 
 // Exercise the real shell and child rendering without starting API/socket
 // orchestration. The inherited Lit controllers and update lifecycle still run.
@@ -59,26 +57,6 @@ afterEach(() => {
 });
 
 describe("application rendering boundaries", () => {
-  it.each([
-    { mobile: true, desktop: false, view: "chat", pins: ["navigation"], selected: true },
-    { mobile: true, desktop: false, view: "chat", pins: ["chat"], selected: false },
-    { mobile: true, desktop: false, view: "chat", pins: [], selected: false },
-    { mobile: false, desktop: false, view: "navigation", pins: ["chat"], selected: false },
-    { mobile: false, desktop: true, view: "chat", pins: ["navigation"], selected: false },
-  ] as const)("highlights only available hidden mobile destinations: %j", async ({ mobile, desktop, view, pins, selected }) => {
-    saveNavigationPreferences({ pinnedIds: [...pins], mobileCollapsed: false });
-    const app = await mountApp({ mainView: view });
-    const shell: unknown = Reflect.get(app, "appShell");
-    if (!(shell instanceof AppShellController)) throw new Error("Expected shell controller");
-    shell.isMobileNavigationLayout = mobile;
-    shell.isDesktopSideBySideLayout = desktop;
-    app.requestUpdate();
-    await settle(app);
-    const menu = app.shadowRoot?.querySelector("app-mobile-main-tabs")?.shadowRoot?.querySelector('button[aria-label="Navigation"]');
-    expect(menu).not.toBeNull();
-    expect(menu?.classList.contains("selected")).toBe(selected);
-  });
-
   it("keeps the activity notice in the blocked composer until dismissal without losing drafts or attachments", async () => {
     const send = vi.spyOn(SessionController.prototype, "send").mockResolvedValue(true);
     const key = machineSessionKey("local", session.id);

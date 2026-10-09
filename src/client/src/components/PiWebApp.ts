@@ -1705,7 +1705,6 @@ export class PiWebApp extends LitElement {
         .tool=${this.effectiveWorkspaceTool(panels)}
         .panels=${panels}
         .pinnedIds=${this.navigationPreferences.pinnedIds}
-        .onShowNavigation=${this.showNavigation}
         .onSelectTool=${(tool: QualifiedContributionId) => { this.openWorkspaceTool(tool); }}
       ></workspace-panel>
     `;
@@ -3623,7 +3622,6 @@ export class PiWebApp extends LitElement {
         .session=${this.state.selectedSession}
         .refreshControl=${this.appShell.shouldShowAppRefreshInContextBar() ? this.renderAppRefresh() : undefined}
         .onOpenSection=${this.handleOpenNavigationSection}
-        .onShowNavigation=${this.navigationPreferences.mobileCollapsed ? this.showNavigation : undefined}
         .hiddenActiveDestination=${this.availableNavigationTabs().some((tab) => tab.id === this.selectedNavigationTab())}
         .onShowActions=${this.navigationActions.showActions}
       ></app-context-bar>
@@ -3640,7 +3638,6 @@ export class PiWebApp extends LitElement {
       <app-mobile-main-tabs
         .tabs=${pinnedTabs}
         .hiddenActiveDestination=${availableTabs.some((tab) => tab.id === selectedTab) && !pinnedTabs.some((tab) => tab.id === selectedTab)}
-        .onShowNavigation=${this.showNavigation}
         .selectedTab=${selectedTab}
         .onSelect=${this.selectNavigationTab}
       ></app-mobile-main-tabs>
