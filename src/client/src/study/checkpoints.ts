@@ -80,3 +80,10 @@ function hash(text: string): number {
   for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
   return h >>> 0;
 }
+
+/** The checkpoint still waiting for an answer, if the last one is unanswered. */
+export function openCheckpoint(lines: readonly ChatLine[]): CheckpointPart | undefined {
+  const checkpoints = applyCheckpoints(lines).flatMap((line) => line.parts.filter((part): part is CheckpointPart => part.type === "checkpoint"));
+  const last = checkpoints.at(-1);
+  return last === undefined || last.selectedId !== undefined || last.skipped === true ? undefined : last;
+}

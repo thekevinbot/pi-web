@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { normalizeMessages } from "../chatMessages";
-import { applyCheckpoints, displayOrder } from "./checkpoints";
+import { applyCheckpoints, displayOrder, openCheckpoint } from "./checkpoints";
 
 const options = [{ id: "a", label: "Option A" }, { id: "b", label: "Option B" }, { id: "c", label: "Option C" }];
 
@@ -47,5 +47,17 @@ describe("displayOrder", () => {
     const first = displayOrder(options, "session-1:call-1");
     expect(displayOrder(options, "session-1:call-1")).toEqual(first);
     expect([...first].sort((x, y) => x.id.localeCompare(y.id))).toEqual(options);
+  });
+});
+
+describe("openCheckpoint", () => {
+  it("returns the unanswered checkpoint", () => {
+    expect(openCheckpoint(normalizeMessages(recording.slice(0, 4)))).toMatchObject({ question: "Which way?" });
+  });
+
+  it("returns nothing once the checkpoint is answered or bypassed", () => {
+    expect(openCheckpoint(normalizeMessages(recording))).toBeUndefined();
+    const bypassed = [...recording.slice(0, 4), { role: "user", content: [{ type: "text", text: "Do something else." }] }];
+    expect(openCheckpoint(normalizeMessages(bypassed))).toBeUndefined();
   });
 });

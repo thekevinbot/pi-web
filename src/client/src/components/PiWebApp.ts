@@ -91,7 +91,8 @@ import "./appShell/AppRefreshControl";
 import { errorBanner } from "./errorBanner";
 import { deprecatedAgentInputsBanner, deprecatedAgentInputsWarnings } from "./deprecatedAgentInputsBanner";
 import { appStyles } from "./shared";
-import { pickCommand } from "../study/checkpoints";
+import { displayOrder, openCheckpoint, pickCommand } from "../study/checkpoints";
+import "../study/CheckpointCard";
 
 
 const PI_WEB_STATUS_REFRESH_MS = 15 * 60 * 1000;
@@ -3361,6 +3362,25 @@ export class PiWebApp extends LitElement {
     void this.sessions.dismissWarning(dismissId);
   };
 
+  private renderComposer(state: AppState, session: SessionInfo, activityNoticeVisible: boolean) {
+    const checkpoint = state.status?.isStreaming === true || session.archived === true ? undefined : openCheckpoint(state.messages);
+    if (checkpoint !== undefined) {
+      const checkpointId = checkpoint.toolCallId ?? checkpoint.question;
+      return html`
+        <checkpoint-card
+          .checkpointId=${checkpointId}
+          .question=${checkpoint.question}
+          .options=${displayOrder(checkpoint.options, `${session.id}:${checkpointId}`)}
+          .onPick=${this.handlePickOption}
+          .onWriteOwn=${this.handleSendPrompt}
+        ></checkpoint-card>
+      `;
+    }
+    return html`
+      <prompt-editor ?inert=${activityNoticeVisible} .promptChips=${this.selectedPromptChips()} .onRemoveChip=${this.handleRemovePromptChip} .shortcuts=${this.shortcutConfig} .sessionId=${session.id} .cwd=${state.selectedWorkspace?.path} .machineId=${selectedMachineId(state)} .projectId=${state.selectedWorkspace?.projectId} .workspaceId=${state.selectedWorkspace?.id} .attachmentsFolder=${workspaceEffectiveAttachmentsFolder(state.selectedWorkspace?.effectiveConfig, this.workspaceAttachmentsDefaultFolder)} .disabled=${session.archived === true || activityNoticeVisible} .canSteer=${state.status?.isStreaming === true} .isCompacting=${state.status?.isCompacting === true} .canStop=${state.status?.isStreaming === true || state.status?.isBashRunning === true || state.status?.isCompacting === true || (state.status?.pendingMessageCount ?? 0) > 0} .status=${state.status} .availableThinkingLevels=${state.availableThinkingLevels} .sending=${state.sendingPrompts[session.id] === true} .onSend=${this.handleSendPrompt} .onStop=${this.handleStopActiveWork} .onSelectModel=${this.handleSelectModel} .onSelectThinking=${this.handleSelectThinking}></prompt-editor>
+    `;
+  }
+
   private readonly handlePickOption = async (optionId: string): Promise<void> => {
     if (!await this.sessions.send(pickCommand(optionId))) throw new Error("pick was not sent");
   };
@@ -3546,7 +3566,7 @@ export class PiWebApp extends LitElement {
       this.notificationView = selectedNotificationView(state.selectedNotificationInbox);
     }
     return html`
-      <chat-view .contentRendering=${this.plugins.chatContentRendering} .machineId=${selectedMachineId(state)} @workspace-file-open=${this.handleWorkspaceFileOpen} .workspaceContext=${markdownWorkspaceContext(selectedMachineId(state), state.selectedWorkspace, session)} .sessionId=${session.id} .sessionCwd=${session.cwd} .onMessageAction=${this.handleMessageAction} .onDisplayedMessageAction=${this.handleDisplayedMessageAction} .messageActions=${this.plugins.getMessageActions(selectedMachineId(state))} .messageActionContext=${this.messageActionContext(state)} .messages=${state.messages} .messageStart=${state.messagePageStart} .messageEnd=${state.messagePageEnd} .messageTotal=${state.messagePageTotal} .hasMore=${state.messagePageStart > 0} .loadingMore=${state.isLoadingEarlierMessages} .isSendingPrompt=${state.sendingPrompts[session.id] === true} .isCompacting=${state.status?.isCompacting === true} .pendingMessageCount=${state.status?.pendingMessageCount ?? 0} .clientQueuedMessages=${state.clientQueuedSessionMessages[session.id] ?? this.emptyClientQueue} .status=${state.status} .onUseSuggestedInput=${session.archived === true ? undefined : this.handleUseSuggestedInput} .activity=${state.activity} .pendingAsk=${state.pendingAsk} .pendingDialogs=${state.pendingDialogs} .closedDialogs=${state.closedDialogs} .onAnswerDialog=${this.handleAnswerDialog} .onCancelDialog=${this.handleCancelDialog} .onDismissClosedDialog=${this.handleDismissClosedDialog} .askDraftSessionId=${machineSessionKey(selectedMachineId(state), session.id)} .onSubmitAsk=${this.handleSubmitAsk} .onPickOption=${session.archived === true ? undefined : this.handlePickOption} .notificationInbox=${this.notificationView} .onClearServerQueue=${this.handleClearServerQueue} .onDismissWarning=${this.handleDismissWarning} .onDismissNotification=${this.handleDismissNotification} .onDismissAllNotifications=${this.handleDismissAllNotifications} .warningsVisible=${!this.sessionWarningVisibility.collapsed} .onToggleWarnings=${this.handleToggleWarnings} .onLoadMore=${this.handleLoadEarlierMessages}></chat-view>
+      <chat-view .contentRendering=${this.plugins.chatContentRendering} .machineId=${selectedMachineId(state)} @workspace-file-open=${this.handleWorkspaceFileOpen} .workspaceContext=${markdownWorkspaceContext(selectedMachineId(state), state.selectedWorkspace, session)} .sessionId=${session.id} .sessionCwd=${session.cwd} .onMessageAction=${this.handleMessageAction} .onDisplayedMessageAction=${this.handleDisplayedMessageAction} .messageActions=${this.plugins.getMessageActions(selectedMachineId(state))} .messageActionContext=${this.messageActionContext(state)} .messages=${state.messages} .messageStart=${state.messagePageStart} .messageEnd=${state.messagePageEnd} .messageTotal=${state.messagePageTotal} .hasMore=${state.messagePageStart > 0} .loadingMore=${state.isLoadingEarlierMessages} .isSendingPrompt=${state.sendingPrompts[session.id] === true} .isCompacting=${state.status?.isCompacting === true} .pendingMessageCount=${state.status?.pendingMessageCount ?? 0} .clientQueuedMessages=${state.clientQueuedSessionMessages[session.id] ?? this.emptyClientQueue} .status=${state.status} .onUseSuggestedInput=${session.archived === true ? undefined : this.handleUseSuggestedInput} .activity=${state.activity} .pendingAsk=${state.pendingAsk} .pendingDialogs=${state.pendingDialogs} .closedDialogs=${state.closedDialogs} .onAnswerDialog=${this.handleAnswerDialog} .onCancelDialog=${this.handleCancelDialog} .onDismissClosedDialog=${this.handleDismissClosedDialog} .askDraftSessionId=${machineSessionKey(selectedMachineId(state), session.id)} .onSubmitAsk=${this.handleSubmitAsk} .notificationInbox=${this.notificationView} .onClearServerQueue=${this.handleClearServerQueue} .onDismissWarning=${this.handleDismissWarning} .onDismissNotification=${this.handleDismissNotification} .onDismissAllNotifications=${this.handleDismissAllNotifications} .warningsVisible=${!this.sessionWarningVisibility.collapsed} .onToggleWarnings=${this.handleToggleWarnings} .onLoadMore=${this.handleLoadEarlierMessages}></chat-view>
     `;
   }
 
@@ -3723,9 +3743,7 @@ export class PiWebApp extends LitElement {
     const mainView = this.effectiveMainView();
     const activityNoticeVisible = this.unacknowledgedActivitySessionKey(state) !== undefined;
     return html`
-      <div class=${this.panelCollapse.shellClass(mainView)} style=${this.panelResize.shellStyle({ navigation: this.resizablePanelConstraints("navigation"), workspace: this.resizablePanelConstraints("workspace") })}>
-        <aside id="navigation-panel">${this.appShell.isMobileNavigationLayout ? null : this.renderNavigationPanel()}</aside>
-        ${this.renderNavigationPanelEdgeControl()}
+      <div class=${`${this.panelCollapse.shellClass(mainView)} navigation-panel-collapsed`} style=${this.panelResize.shellStyle({ navigation: this.resizablePanelConstraints("navigation"), workspace: this.resizablePanelConstraints("workspace") })}>
         <main class=${mainViewClass(mainView)}>
           ${this.renderContextBar()}
           ${guard([...this.workspaceSurfaceInputs(), state.sessions, this.unreadSessionIds], () => this.renderMobileMainTabs())}
@@ -3734,11 +3752,10 @@ export class PiWebApp extends LitElement {
           ${errorBanner(this.displayedError(), () => { this.dismissDisplayedError(); })}
           ${this.renderBrowserErrorBanners(state)}
           ${deprecatedAgentInputsBanner(deprecatedAgentInputsWarnings(state.machines, state.machineRuntimes))}
-          <div class="mobile-navigation-panel">${this.appShell.isMobileNavigationLayout ? this.renderNavigationPanel() : null}</div>
           ${state.selectedSession ? html`
             ${this.renderChatView(state, state.selectedSession)}
             <div class="composer-area">
-              <prompt-editor ?inert=${activityNoticeVisible} .promptChips=${this.selectedPromptChips()} .onRemoveChip=${this.handleRemovePromptChip} .shortcuts=${this.shortcutConfig} .sessionId=${state.selectedSession.id} .cwd=${state.selectedWorkspace?.path} .machineId=${selectedMachineId(state)} .projectId=${state.selectedWorkspace?.projectId} .workspaceId=${state.selectedWorkspace?.id} .attachmentsFolder=${workspaceEffectiveAttachmentsFolder(state.selectedWorkspace?.effectiveConfig, this.workspaceAttachmentsDefaultFolder)} .disabled=${state.selectedSession.archived === true || activityNoticeVisible} .canSteer=${state.status?.isStreaming === true} .isCompacting=${state.status?.isCompacting === true} .canStop=${state.status?.isStreaming === true || state.status?.isBashRunning === true || state.status?.isCompacting === true || (state.status?.pendingMessageCount ?? 0) > 0} .status=${state.status} .availableThinkingLevels=${state.availableThinkingLevels} .sending=${state.sendingPrompts[state.selectedSession.id] === true} .onSend=${this.handleSendPrompt} .onStop=${this.handleStopActiveWork} .onSelectModel=${this.handleSelectModel} .onSelectThinking=${this.handleSelectThinking}></prompt-editor>
+              ${this.renderComposer(state, state.selectedSession, activityNoticeVisible)}
               ${this.renderSessionActivityNotice()}
             </div>
             ${this.renderStatusBar(state)}
@@ -3750,15 +3767,6 @@ export class PiWebApp extends LitElement {
         ${this.renderWorkspacePanelEdgeControl()}
         ${guard(this.workspaceSurfaceInputs(), () => this.renderWorkspacePanel())}
         ${state.authDialog !== undefined ? html`<auth-dialog .state=${state.authDialog} .onChooseMethod=${(authType: "oauth" | "api_key") => { void this.auth.chooseLoginMethod(authType); }} .onSelectProvider=${(providerId: string, authType: "oauth" | "api_key") => { void this.auth.selectLoginProvider(providerId, authType); }} .onLogoutProvider=${(providerId: string) => { void this.auth.logoutProvider(providerId); }} .onOAuthInput=${(value: string) => { this.auth.updateOAuthInput(value); }} .onOAuthRespond=${(value?: string) => { void this.auth.respondOAuth(value); }} .onOAuthCancel=${() => { void this.auth.cancelOAuth(); }} .onCancel=${() => { this.auth.closeDialog(); }}></auth-dialog>` : null}
-        ${this.navigationDialogOpen ? html`<navigation-dialog
-          .tabs=${this.availableNavigationTabs()}
-          .pinUniverse=${this.mobileMainTabs().map((tab) => tab.id)}
-          .selectedTab=${this.selectedNavigationTab()}
-          .preferences=${this.navigationPreferences}
-          .onPreferencesChange=${this.changeNavigationPreferences}
-          .onSelect=${this.selectNavigationTab}
-          .onClose=${this.closeNavigation}
-        ></navigation-dialog>` : null}
         ${state.actionPaletteOpen ? html`<action-palette .actions=${this.getActions()} .onRun=${(action: AppAction) => { this.setState({ actionPaletteOpen: false }); this.runAction(action); }} .onCancel=${() => { this.setState({ actionPaletteOpen: false }); }}></action-palette>` : null}
         ${this.renderSessionTreeNavigator(state)}
         ${state.projectDialogOpen ? html`<project-dialog .machineId=${selectedMachineId(state)} .onSubmit=${(path: string, create: boolean, trust: ProjectTrustChoice | undefined) => this.projects.addProject(path, create, trust)} .onCancel=${() => { this.setState({ projectDialogOpen: false }); }}></project-dialog>` : null}

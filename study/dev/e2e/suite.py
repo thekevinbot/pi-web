@@ -76,6 +76,14 @@ def card_ids(page, idx=-1):
     return [bs.nth(i).get_attribute("data-option-id") for i in range(bs.count())]
 
 
+def records(page):
+    return page.locator("checkpoint-record").evaluate_all("els => els.map(e => e.shadowRoot.textContent.replace(/\\s+/g, ' ').trim())")
+
+
+def label(path, n, oid):
+    return next(o["label"] for o in offers(path)[n]["options"] if o["id"] == oid)
+
+
 def expect(cond, msg):
     if not cond:
         raise AssertionError(msg)
@@ -95,12 +103,15 @@ def hygiene(page):
     expect("Pick one with /pick" not in body, "'Pick one with /pick' visible")
     expect("offer_options" not in body, "raw offer_options visible")
     expect(page.locator("extension-dialog-card").count() == 0, "extension dialog shown")
+    expect(page.locator("app-navigation-panel").count() == 0, "navigation panel rendered")
 
 
 def t_first_card(page, sid, path):
     page.goto(url(sid)); ready(path, 1)
     wait_for(lambda: enabled(page).count() > 0, "no enabled card")
     expect(sorted(card_ids(page)) == sorted(o["id"] for o in offers(path)[0]["options"]), "card options != offered options")
+    expect(page.locator("prompt-editor").count() == 0, "composer shown alongside the card")
+    expect(page.locator("chat-view checkpoint-card").count() == 0, "card rendered inside the transcript")
     hygiene(page)
 
 
@@ -111,11 +122,9 @@ def t_click_records(page, sid, path):
     enabled(page).first.click()
     ready(path, 2)
     expect(selections(path) == [pick], f"selections {selections(path)} != [{pick}]")
-    wait_for(lambda: page.locator("checkpoint-card").count() == 2, "second card not shown")
-    first = page.locator("checkpoint-card").first
-    expect(first.locator("button:not([disabled])").count() == 0, "answered card still enabled")
-    expect(first.locator(f'button[data-option-id="{pick}"].chosen').count() == 1, "chosen not highlighted")
-    wait_for(lambda: page.locator("checkpoint-card").last.locator("button:not([disabled])").count() > 0, "second card not enabled")
+    want = f"Chose: {label(path, 0, pick)}"
+    wait_for(lambda: len(records(page)) == 1 and want in records(page)[0], f"record missing, got {records(page)}")
+    wait_for(lambda: sorted(card_ids(page)) == sorted(o["id"] for o in offers(path)[1]["options"]) and enabled(page).count() > 0, "second card not docked")
     hygiene(page)
 
 
@@ -141,10 +150,10 @@ def t_reload_persists(page, sid, path):
     expect(card_ids(page) == order, f"order changed on reload {order} -> {card_ids(page)}")
     pick = enabled(page).first.get_attribute("data-option-id")
     enabled(page).first.click(); ready(path, 2)
-    page.reload(); wait_for(lambda: page.locator("checkpoint-card").count() == 2, "cards missing after reload")
-    first = page.locator("checkpoint-card").first
-    expect(first.locator(f'button[data-option-id="{pick}"].chosen').count() == 1, "choice lost on reload")
-    expect(first.locator("button:not([disabled])").count() == 0, "answered card enabled after reload")
+    page.reload()
+    want = f"Chose: {label(path, 0, pick)}"
+    wait_for(lambda: len(records(page)) == 1 and want in records(page)[0], f"choice lost on reload: {records(page)}")
+    wait_for(lambda: enabled(page).count() > 0, "second card missing after reload")
     hygiene(page)
 
 
@@ -176,14 +185,13 @@ def t_click_while_streaming(page, sid, path):
 def t_free_text(page, sid, path):
     page.goto(url(sid)); ready(path, 1)
     wait_for(lambda: enabled(page).count() > 0, "no card")
-    box = page.locator("prompt-editor .cm-content").first
-    box.click()
-    page.keyboard.type("Actually, can you explain the options first?")
+    expect(page.locator("prompt-editor").count() == 0, "composer shown alongside the card")
+    page.get_by_label("Other").fill("Actually, can you explain the options first?")
     page.keyboard.press("Enter")
     ready(path, 2)
-    wait_for(lambda: page.locator("checkpoint-card").count() == 2, "second card missing")
-    stale = page.locator("checkpoint-card").first.locator("button:not([disabled])").count()
-    expect(stale == 0, f"bypassed card still has {stale} clickable options")
+    wait_for(lambda: len(records(page)) == 1 and records(page)[0] and "Chose:" not in records(page)[0], f"bypassed record wrong: {records(page)}")
+    wait_for(lambda: enabled(page).count() > 0, "second card not docked after free text")
+    expect(selections(path) == [], f"free text recorded a selection: {selections(path)}")
 
 
 def t_two_tabs(page, sid, path):
@@ -192,8 +200,7 @@ def t_two_tabs(page, sid, path):
     wait_for(lambda: enabled(page).count() > 0 and enabled(other).count() > 0, "card missing in a tab")
     expect(card_ids(page) == card_ids(other), "tabs disagree on order")
     enabled(page).first.click(); ready(path, 2)
-    wait_for(lambda: other.locator("checkpoint-card").count() == 2, "other tab did not update")
-    expect(other.locator("checkpoint-card").first.locator("button:not([disabled])").count() == 0, "other tab: answered card enabled")
+    wait_for(lambda: len(records(other)) == 1 and "Chose:" in records(other)[0], "other tab did not record the pick")
     other.close()
 
 
