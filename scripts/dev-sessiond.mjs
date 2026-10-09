@@ -18,7 +18,7 @@ export async function waitForPluginBuild({ cwd = process.cwd(), timeoutMs = 120_
       return;
     } catch (error) { if (error?.code !== "ENOENT") throw error; }
     const remaining = deadline - Date.now();
-    if (remaining <= 0) throw new Error("Plugin build not ready. Start npm run dev:web (or npm run dev:plugins), wait for its build, then start sessiond.");
+    if (remaining <= 0) throw new Error("Plugin build not ready. Start pnpm dev:web (or pnpm dev:plugins), wait for its build, then start sessiond.");
     await delay(Math.min(intervalMs, remaining), undefined, { signal });
   }
 }
