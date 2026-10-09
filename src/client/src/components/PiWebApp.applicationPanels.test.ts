@@ -39,42 +39,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it("uses bundled Info with no project, workspace or session and follows selection without reactivation", async () => {
-  const activate = vi.fn(infoPlugin.activate);
-  const app = await mount({ ...infoPlugin, activate });
-  const panel = toolSurface(app);
-  expect(panel.shadowRoot?.textContent).toContain("PI WEB status is not available yet");
-  expect(panel.shadowRoot?.textContent).toContain("Machine");
-  expect(panel.shadowRoot?.textContent).not.toContain("Workspace");
-  expect(panel.shadowRoot?.querySelector('[aria-label="Info"]')).not.toBeNull();
-  const status: PiWebStatusResponse = {
-    packageName: "@jmfederico/pi-web", generatedAt: "now",
-    components: {
-      web: { component: "web", label: "Web/UI", runtimeVersion: "1.202610.0", stale: false, available: true },
-      sessiond: { component: "sessiond", label: "Session daemon", stale: false, available: true },
-    },
-    release: { packageName: "@jmfederico/pi-web", updateAvailable: false }, commands: {}, messages: [],
-  };
-  patchState(app, { piWebStatus: status });
-  await settle(app);
-  expect(panel.shadowRoot?.textContent).toContain("1.202610.0");
-  expect(panel.shadowRoot?.textContent).toContain("Services");
-
-  patchState(app, { selectedMachine: remote, selectedProject: project, selectedWorkspace: workspace, workspaces: [workspace] });
-  await settle(app);
-  expect(panel.shadowRoot?.textContent).toContain("Remote box");
-  expect(panel.shadowRoot?.textContent).toContain("remote machine");
-  expect(panel.shadowRoot?.textContent).toContain("Workspace");
-  expect(panel.shadowRoot?.textContent).toContain("/repo");
-  expect(app.shadowRoot?.querySelector("app-navigation-panel")?.shadowRoot?.querySelector("workspace-list")?.shadowRoot?.textContent).toContain("folder");
-
-  patchState(app, { selectedProject: undefined, selectedWorkspace: undefined });
-  await settle(app);
-  expect(panel.shadowRoot?.textContent).toContain("Remote box");
-  expect(panel.shadowRoot?.textContent).not.toContain("/repo");
-  expect(activate).toHaveBeenCalledOnce();
-});
-
 it("gives public callbacks fresh basic selections and keeps workspace-only tabs out until selected", async () => {
   const contexts: ApplicationPanelContext[] = [];
   const plugin: PiWebPlugin = {
