@@ -9,7 +9,9 @@ export function pickCommand(optionId: string): string {
   return `/pick ${optionId}`;
 }
 
-export function checkpointPart(toolCallId: string | undefined, args: unknown): Extract<ChatPart, { type: "checkpoint" }> | undefined {
+type CheckpointPart = Extract<ChatPart, { type: "checkpoint" }>;
+
+export function checkpointPart(toolCallId: string | undefined, args: unknown): CheckpointPart | undefined {
   if (!isRecord(args)) return undefined;
   const { question, options } = args;
   if (typeof question !== "string" || !Array.isArray(options)) return undefined;
@@ -34,27 +36,30 @@ export function optionSelectionPart(details: unknown): Extract<ChatPart, { type:
  */
 export function applyCheckpoints(lines: readonly ChatLine[]): ChatLine[] {
   const out = lines.map((line) => ({ ...line, parts: [...line.parts] }));
-  let open: number | undefined;
-  out.forEach((line, lineIndex) => {
+  let open: { line: ChatLine; part: CheckpointPart } | undefined;
+  const close = (update: Partial<CheckpointPart>) => {
+    if (open === undefined) return;
+    const { line, part } = open;
+    line.parts = line.parts.map((candidate) => candidate === part ? { ...part, ...update } : candidate);
+    open = undefined;
+  };
+  for (const line of out) {
     line.parts = line.parts.flatMap((part): ChatPart[] => {
       if (part.type === "checkpoint") {
-        open = lineIndex;
+        close({ skipped: true });
+        open = { line, part };
         return [part];
       }
       if (part.type === "optionSelection") {
-        if (open !== undefined) {
-          const owner = out[open];
-          if (owner !== undefined) owner.parts = owner.parts.map((candidate) => candidate.type === "checkpoint" ? { ...candidate, selectedId: part.id } : candidate);
-          open = undefined;
-        }
+        close({ selectedId: part.id });
         return [];
       }
       if (open !== undefined && (part.type === "toolResult" || part.type === "toolExecution") && part.toolName === OFFER_OPTIONS_TOOL) return [];
       if (open !== undefined && line.role === "assistant" && part.type === "text") return [];
       return [part];
     });
-    if (open !== undefined && line.role === "user") open = undefined;
-  });
+    if (line.role === "user") close({ skipped: true });
+  }
   return out;
 }
 

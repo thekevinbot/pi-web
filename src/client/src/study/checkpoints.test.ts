@@ -32,6 +32,16 @@ describe("applyCheckpoints", () => {
   });
 });
 
+describe("applyCheckpoints when the participant types instead of picking", () => {
+  it("marks the bypassed checkpoint skipped so it can no longer be answered", () => {
+    const typed = [...recording.slice(0, 4), { role: "user", content: [{ type: "text", text: "Explain first." }] }, ...recording.slice(1, 4)];
+    const checkpoints = applyCheckpoints(normalizeMessages(typed)).flatMap((line) => line.parts).filter((part) => part.type === "checkpoint");
+    expect(checkpoints).toHaveLength(2);
+    expect(checkpoints[0]).toMatchObject({ skipped: true });
+    expect(checkpoints[1]).not.toHaveProperty("skipped");
+  });
+});
+
 describe("displayOrder", () => {
   it("is stable for a seed and keeps every option", () => {
     const first = displayOrder(options, "session-1:call-1");

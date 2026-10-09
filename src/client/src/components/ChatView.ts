@@ -1075,6 +1075,7 @@ export class ChatView extends LitElement {
         .question=${part.question}
         .options=${displayOrder(part.options, `${this.sessionId}:${part.toolCallId ?? part.question}`)}
         .selectedId=${part.selectedId}
+        .skipped=${part.skipped === true}
         .onPick=${this.onPickOption}
       ></checkpoint-card>
     `;

@@ -72,7 +72,7 @@ export type ChatPart =
   | { type: "skillInvocation"; name: string; location: string; content: string }
   | { type: "skillRead"; name: string; path: string; toolCallId?: string }
   | { type: "askUserRecord"; outcome: AskUserOutcome }
-  | { type: "checkpoint"; toolCallId?: string; question: string; options: CheckpointOption[]; selectedId?: string }
+  | { type: "checkpoint"; toolCallId?: string; question: string; options: CheckpointOption[]; selectedId?: string; skipped?: true }
   | { type: "optionSelection"; id: string }
   | { type: "toolCall"; toolCallId?: string; toolName: string; summary: string; args?: unknown }
   | ToolExecutionPart
