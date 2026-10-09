@@ -1,0 +1,53 @@
+{
+  "start": "intro",
+  "nodes": {
+    "intro": {
+      "say": "## Where we are\n\nI read `app.py`. Signup validates email with a hand-written regex. It accepts `a@b` and rejects `first+tag@example.com`. The tests in `test_app.py` only cover the happy path.",
+      "checkpoint": {
+        "question": "How should we handle email validation?",
+        "options": [
+          {"id": "tighten-regex", "label": "Tighten the email regex and add tests for the edge cases it currently accepts", "next": "regex"},
+          {"id": "use-library", "label": "Replace the hand-written regex with a maintained validation library", "next": "library"},
+          {"id": "ship-as-is", "label": "Leave validation as it is and move on to the retry bug", "next": "retry"}
+        ],
+        "redirect": "tighten-regex"
+      }
+    },
+    "regex": {
+      "say": "I tightened the regex and added five edge-case tests. Four pass. `first+tag@example.com` still fails, because the pattern rejects `+` in the local part.",
+      "checkpoint": {
+        "question": "The plus-address test still fails. What next?",
+        "options": [
+          {"id": "allow-plus", "label": "Allow + in the local part and rerun the tests", "next": "done"},
+          {"id": "drop-test", "label": "Drop the plus-address test; it is out of scope", "next": "done"}
+        ],
+        "redirect": "allow-plus"
+      }
+    },
+    "library": {
+      "say": "I swapped the regex for `email-validator`. All existing tests pass. The library also does a DNS lookup by default, which makes the tests hit the network.",
+      "checkpoint": {
+        "question": "The library makes network calls in tests. What next?",
+        "options": [
+          {"id": "disable-dns", "label": "Turn off the DNS check and keep the library", "next": "done"},
+          {"id": "revert", "label": "Revert to the regex", "next": "done"}
+        ],
+        "redirect": "disable-dns"
+      }
+    },
+    "retry": {
+      "say": "Leaving validation alone. The retry bug is in `send_welcome`: it retries on every exception, including bad input.",
+      "checkpoint": {
+        "question": "How should retries work?",
+        "options": [
+          {"id": "retry-transient", "label": "Retry only on network errors", "next": "done"},
+          {"id": "remove-retry", "label": "Remove the retry loop", "next": "done"}
+        ],
+        "redirect": "retry-transient"
+      }
+    },
+    "done": {
+      "say": "Done. That is the end of this session."
+    }
+  }
+}

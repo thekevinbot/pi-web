@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local study UI: the built fork, Laith's checkpoint extension, and a stub model.
+# Local study UI: the built fork, Laith's checkpoint extension, and the scripted study backend.
 # Usage: study/dev/run.sh   (run `pnpm build` first). Prints the landing link.
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -39,7 +39,7 @@ export PI_CODING_AGENT_DIR=$STATE/agent PI_WEB_DATA_DIR=$STATE/data PI_WEB_CONFI
   PI_WEB_HOST=$HOST PI_WEB_PORT=$PORT PI_WEB_SESSIOND_SOCKET=$STATE/sessiond.sock PI_WEB_SKIP_VERSION_CHECK=1 PI_WEB_OFFLINE=1
 
 trap 'kill 0' EXIT
-STUB_PORT=$STUB_PORT python3 -u "$HERE/stub-backend.py" > "$STATE/stub.log" 2>&1 &
+STUB_PORT=$STUB_PORT STUDY_FREE_TEXT_LOG=$STATE/free-text.jsonl python3 -u "$HERE/backend.py" > "$STATE/stub.log" 2>&1 &
 node "$ROOT/dist/server/sessiond.js" > "$STATE/sessiond.log" 2>&1 &
 node "$ROOT/dist/server/index.js" > "$STATE/web.log" 2>&1 &
 until curl -fsS "$API/sessiond/health" > /dev/null 2>&1; do sleep 0.5; done
