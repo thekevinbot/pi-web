@@ -19,13 +19,15 @@ git -C "$IH_REPO" archive "$IH_REF" session-recording/pi-extension-checkpoint/sr
   | tar -x -C "$STATE" --strip-components=1
 mv "$STATE/pi-extension-checkpoint" "$STATE/agent/extensions/checkpoint"
 patch -s -d "$STATE/agent/extensions/checkpoint" -p1 < "$HERE/pick-by-id.patch"
+cp -r "$HERE/extensions/replay-only" "$STATE/agent/extensions/"
 
 cat > "$STATE/agent/models.json" <<EOF
 {"providers": {"study": {"baseUrl": "http://127.0.0.1:$STUB_PORT/v1", "api": "openai-completions", "apiKey": "none",
   "models": [{"id": "stub", "name": "Agent", "contextWindow": 200000, "maxTokens": 8192}]}}}
 EOF
 cat > "$STATE/agent/settings.json" <<EOF
-{"defaultProvider": "study", "defaultModel": "stub", "defaultThinkingLevel": "off", "compaction": {"enabled": false}}
+{"defaultProvider": "study", "defaultModel": "stub", "defaultThinkingLevel": "off", "compaction": {"enabled": false},
+  "defaultTools": []}
 EOF
 cat > "$STATE/data/pi-package-dismissals.json" <<EOF
 {"dismissals": [{"profileDir": "$STATE/agent", "packageId": "@jmfederico/pi-relay", "dismissedAt": "2026-10-09T00:00:00.000Z"}]}
@@ -46,12 +48,12 @@ node "$ROOT/dist/server/index.js" > "$STATE/web.log" 2>&1 &
 until curl -fsS "$API/sessiond/health" > /dev/null 2>&1; do sleep 0.5; done
 
 W=$STATE/workspace
-project=$(curl -fsS -X POST -H 'content-type: application/json' -d "{\"path\": \"$W\"}" "$API/projects")
-session=$(curl -fsS -X POST -H 'content-type: application/json' -d "{\"cwd\": \"$W\"}" "$API/sessions")
+SOCK=(--unix-socket "$STATE/sessiond.sock" -H 'content-type: application/json')
+project=$(curl -fsS "${SOCK[@]}" -X POST -d "{\"path\": \"$W\"}" http://sessiond/projects)
+session=$(curl -fsS "${SOCK[@]}" -X POST -d "{\"cwd\": \"$W\"}" http://sessiond/sessions)
 P=$(sed 's/.*"id":"\([^"]*\)".*/\1/' <<< "$project")
 S=$(sed 's/^{"id":"\([^"]*\)".*/\1/' <<< "$session")
-curl -fsS -X POST -H 'content-type: application/json' -d "{\"cwd\": \"$W\", \"text\": \"Continue the task.\"}" \
-  "$API/machines/local/sessions/$S/prompt" > /dev/null
+curl -fsS "${SOCK[@]}" -X POST -d "{\"cwd\": \"$W\", \"text\": \"Continue the task.\"}" "http://sessiond/sessions/$S/prompt" > /dev/null
 WS=$(curl -fsS "$API/projects/$P/workspaces" | sed 's/.*"workspaces":\[{"id":"\([^"]*\)".*/\1/')
 echo "http://$HOST:$PORT/?project=$P&workspace=$WS&session=$S&view=chat"
 wait
