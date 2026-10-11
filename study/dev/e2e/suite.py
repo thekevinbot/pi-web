@@ -1,5 +1,5 @@
 """Adversarial e2e for the option card. Usage: suite.py <landing-url> <browser> [case,case]"""
-import json, sys, time, urllib.parse, urllib.request
+import http.client, json, os, socket, sys, time, urllib.error, urllib.parse, urllib.request
 from playwright.sync_api import sync_playwright
 
 LANDING, BROWSER = sys.argv[1:3]
@@ -12,11 +12,6 @@ API = BASE + "/api"
 results = []
 
 
-def post(path, body):
-    req = urllib.request.Request(API + path, json.dumps(body).encode(), {"content-type": "application/json"})
-    return json.loads(urllib.request.urlopen(req).read() or b"{}")
-
-
 def get(path):
     return json.loads(urllib.request.urlopen(API + path).read())
 
@@ -24,9 +19,21 @@ def get(path):
 CWD = next(p["path"] for p in get("/projects") if p["id"] == PROJECT)
 
 
+class SessiondConnection(http.client.HTTPConnection):
+    def connect(self):
+        self.sock = socket.socket(socket.AF_UNIX)
+        self.sock.connect(os.path.join(os.path.dirname(CWD), "sessiond.sock"))
+
+
+def sessiond_post(path, body):
+    conn = SessiondConnection("sessiond")
+    conn.request("POST", path, json.dumps(body), {"content-type": "application/json"})
+    return json.loads(conn.getresponse().read() or b"{}")
+
+
 def new_session():
-    s = post("/sessions", {"cwd": CWD})
-    post(f"/machines/local/sessions/{s['id']}/prompt", {"cwd": CWD, "text": "Continue the task."})
+    s = sessiond_post("/sessions", {"cwd": CWD})
+    sessiond_post(f"/sessions/{s['id']}/prompt", {"cwd": CWD, "text": "Continue the task."})
     return s["id"], s["path"]
 
 
@@ -226,7 +233,36 @@ def t_mobile(page, sid, path):
     expect(hit == b.get_attribute("data-option-id"), f"last option occluded on mobile: hit {hit}")
 
 
-TESTS = [t_first_card, t_click_records, t_double_click, t_reload_persists, t_mid_stream, t_click_while_streaming, t_free_text, t_two_tabs, t_keyboard, t_mobile]
+def blocked(method, path, body=None):
+    req = urllib.request.Request(API + path, json.dumps(body).encode() if body is not None else None, {"content-type": "application/json"}, method=method)
+    try:
+        urllib.request.urlopen(req)
+        return False
+    except urllib.error.HTTPError as e:
+        return e.code == 404 and json.loads(e.read() or b"{}") == {"error": "Not found"}
+
+
+def t_api_closed(page, sid, path):
+    ref = {"cwd": CWD}
+    s = f"/machines/local/sessions/{sid}"
+    closed = [
+        ("POST", f"{s}/shell", {**ref, "text": "true"}),
+        ("POST", f"{s}/commands/run", {**ref, "text": "/reload"}),
+        ("POST", f"{s}/prompt", {**ref, "text": "x", "attachments": []}),
+        ("POST", "/sessions", ref),
+        ("POST", "/projects", {"path": "/"}),
+        ("DELETE", f"/projects/{PROJECT}", None),
+        ("PUT", "/config", {}),
+        ("GET", "/pi-packages", None),
+        ("GET", "/project-directories?q=/", None),
+        ("GET", f"{s}%2F..%2Fshell", None),
+    ]
+    open_ = [(m, p_) for m, p_, b in closed if not blocked(m, p_, b)]
+    expect(not open_, f"routes still open: {open_}")
+    expect(not blocked("POST", f"{s}/commands/run", {**ref, "text": "/pick nope"}), "/pick blocked")
+
+
+TESTS = [t_first_card, t_click_records, t_double_click, t_reload_persists, t_mid_stream, t_click_while_streaming, t_free_text, t_two_tabs, t_keyboard, t_mobile, t_api_closed]
 
 with sync_playwright() as p:
     browser = getattr(p, BROWSER).launch()
